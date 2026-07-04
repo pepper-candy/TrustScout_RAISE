@@ -18,7 +18,26 @@ const clientEnvSchema = z.object({
  */
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  VULTR_API_KEY: z.string().min(1, "VULTR_API_KEY cannot be empty").optional(),
+  VULTR_MODEL: z.string().min(1, "VULTR_MODEL cannot be empty").default("kimi-k2-instruct"),
 });
+
+const vultrEnvSchema = serverEnvSchema.pick({
+  VULTR_API_KEY: true,
+  VULTR_MODEL: true,
+});
+
+const buildFallbackClientEnv = {
+  NEXT_PUBLIC_SUPABASE_URL: "https://build-placeholder.supabase.co",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "build-placeholder-anon-key",
+};
+
+function isBuildPhase(): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.npm_lifecycle_event === "build"
+  );
+}
 
 function formatZodError(error: z.ZodError): string {
   return error.issues.map((issue) => `- ${issue.path.join(".")}: ${issue.message}`).join("\n");
@@ -31,6 +50,10 @@ function parseClientEnv() {
   });
 
   if (!parsed.success) {
+    if (isBuildPhase()) {
+      return clientEnvSchema.parse(buildFallbackClientEnv);
+    }
+
     throw new Error(`Invalid client environment variables:\n${formatZodError(parsed.error)}`);
   }
 
@@ -54,4 +77,18 @@ export function getServerEnv() {
   }
 
   return { ...clientEnv, ...parsed.data };
+}
+
+/** Lazily validates Vultr-only server variables for sponsor AI integrations. */
+export function getVultrEnv() {
+  const parsed = vultrEnvSchema.safeParse({
+    VULTR_API_KEY: process.env.VULTR_API_KEY,
+    VULTR_MODEL: process.env.VULTR_MODEL,
+  });
+
+  if (!parsed.success) {
+    throw new Error(`Invalid Vultr environment variables:\n${formatZodError(parsed.error)}`);
+  }
+
+  return parsed.data;
 }

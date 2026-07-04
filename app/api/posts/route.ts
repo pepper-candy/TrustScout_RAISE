@@ -22,26 +22,6 @@ export async function GET() {
 
     if (error) throw error;
 
-    // #region agent log
-    fetch("http://127.0.0.1:7664/ingest/4deb5785-9e56-4cf7-be8b-a95d55c85ce7", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "07b6fd" },
-      body: JSON.stringify({
-        sessionId: "07b6fd",
-        runId: "post-fix",
-        hypothesisId: "C",
-        location: "app/api/posts/route.ts:GET",
-        message: "posts fetched for feed",
-        data: {
-          postsIsNull: posts === null,
-          postsLength: posts?.length ?? 0,
-          firstPostCategory: posts?.[0]?.category ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
     const postsWithColor: PostWithColor[] = (posts ?? []).map((post) => ({
       ...post,
       color_code: post.category === "FACTUAL" ? getTrustColorCode(post.trust_score) : null,

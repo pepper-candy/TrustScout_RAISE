@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { AppHeader } from "@/components/features/app-header"
+import { BottomNav } from "@/components/features/bottom-nav"
 import { PostCard } from "@/components/features/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { type CurrentUserProfile, getCurrentUserProfile, switchToRandomUser } from "@/lib/auth"
@@ -17,20 +18,23 @@ const VOTE_TOAST_LABEL: Record<VoteType, string> = {
 
 function FeedSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="border-border/70 flex flex-col gap-4 rounded-xl border bg-white p-5">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-5 w-24 rounded-full" />
-          </div>
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <div className="grid grid-cols-3 gap-2">
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
+        <div
+          key={i}
+          className="border-threads-border grid grid-cols-[48px_minmax(0,1fr)] gap-x-3 border-b px-3 py-3"
+        >
+          <Skeleton className="size-9 rounded-full bg-threads-surface" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40 rounded bg-threads-surface" />
+            <Skeleton className="h-4 w-full rounded bg-threads-surface" />
+            <Skeleton className="h-4 w-3/4 rounded bg-threads-surface" />
+            <Skeleton className="h-8 w-48 rounded-xl bg-threads-surface" />
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-16 rounded-full bg-threads-surface" />
+              <Skeleton className="h-9 w-16 rounded-full bg-threads-surface" />
+              <Skeleton className="h-9 w-16 rounded-full bg-threads-surface" />
+            </div>
           </div>
         </div>
       ))}
@@ -61,9 +65,6 @@ export default function Home() {
       setIsLoadingFeed(true)
       setIsLoadingUser(true)
 
-      // Profile is fetched first (rather than in parallel) so the feed
-      // request can include `user_id` and show each post's "already voted"
-      // state from the very first render.
       let currentProfile: CurrentUserProfile | null = null
       try {
         currentProfile = await getCurrentUserProfile()
@@ -152,7 +153,7 @@ export default function Home() {
   }
 
   return (
-    <>
+    <div className="bg-background mx-auto flex min-h-full w-full max-w-[414px] flex-col">
       <AppHeader
         profile={profile}
         isLoading={isLoadingUser}
@@ -160,11 +161,11 @@ export default function Home() {
         onShuffle={() => void handleShuffle()}
       />
 
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
+      <main className="flex flex-1 flex-col pb-[66px]">
         {isLoadingFeed ? (
           <FeedSkeleton />
         ) : posts.length === 0 ? (
-          <p className="text-muted-foreground py-10 text-center text-sm">No posts yet.</p>
+          <p className="text-threads-muted py-16 text-center text-sm">No posts yet.</p>
         ) : (
           posts.map((post) => (
             <PostCard
@@ -176,6 +177,12 @@ export default function Home() {
           ))
         )}
       </main>
-    </>
+
+      <BottomNav
+        profile={profile}
+        isShuffling={isShuffling}
+        onProfileTap={() => void handleShuffle()}
+      />
+    </div>
   )
 }

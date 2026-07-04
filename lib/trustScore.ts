@@ -78,6 +78,24 @@ export const TRUST_COLOR_LABEL: Record<TrustColorCode, string> = {
   red: "Highly Suspicious",
 };
 
+/**
+ * Builds the sentence read aloud by the Gradium "Listen" button — per
+ * PROJECT_PLAN.md Section 10, Gradium should "speak the post content + trust
+ * score". OPINION/DEBATE posts have no trust score, so they get a shorter
+ * summary instead.
+ */
+export function buildTrustSummaryText(post: PostWithColor): string {
+  if (post.category !== "FACTUAL" || !post.color_code) {
+    return `This is a ${post.category.toLowerCase()} post, so it has no trust score. It says: ${post.content}`;
+  }
+
+  const percentage = Math.round(post.trust_score * 100);
+  const label = TRUST_COLOR_LABEL[post.color_code];
+  const voteWord = post.total_votes === 1 ? "vote" : "votes";
+
+  return `Here's the post: ${post.content}. Community trust score: ${percentage} percent, rated ${label}, based on ${post.total_votes} ${voteWord}.`;
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }

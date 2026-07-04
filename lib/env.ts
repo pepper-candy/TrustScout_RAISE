@@ -39,6 +39,21 @@ const vultrEnvSchema = z.object({
   VULTR_INFERENCE_URL: z
     .url({ message: "VULTR_INFERENCE_URL must be a valid URL" })
     .default("https://api.vultrinference.com/v1/chat/completions"),
+  /**
+   * Vultr Serverless Inference has no standalone embeddings endpoint —
+   * semantic similarity is only exposed through the Vector Store API
+   * (create collection → add items → search), which is what
+   * `lib/services/vultrService.ts`'s `findSimilarTexts` uses.
+   * See https://api.vultrinference.com/ ("Vector Store" section).
+   */
+  VULTR_VECTOR_STORE_URL: z
+    .url({ message: "VULTR_VECTOR_STORE_URL must be a valid URL" })
+    .default("https://api.vultrinference.com/v1/vector_store"),
+});
+
+const gradiumEnvSchema = z.object({
+  GRADIUM_API_KEY: z.string().min(1).optional(),
+  GRADIUM_VOICE_ID: z.string().min(1).default("YTpq7expH9539ERJ"),
 });
 
 function formatZodError(error: z.ZodError): string {
@@ -87,17 +102,40 @@ export function getVultrEnv() {
     VULTR_INFERENCE_API_KEY: process.env.VULTR_INFERENCE_API_KEY,
     VULTR_INFERENCE_MODEL: process.env.VULTR_INFERENCE_MODEL,
     VULTR_INFERENCE_URL: process.env.VULTR_INFERENCE_URL,
+    VULTR_VECTOR_STORE_URL: process.env.VULTR_VECTOR_STORE_URL,
   });
 
   if (!parsed.success) {
     throw new Error(`Invalid Vultr environment variables:\n${formatZodError(parsed.error)}`);
   }
 
-  const inferenceApiKey = parsed.data.VULTR_INFERENCE_API_KEY ?? parsed.data.VULTR_API_KEY;
+  const apiKey = parsed.data.VULTR_INFERENCE_API_KEY ?? parsed.data.VULTR_API_KEY;
 
   return {
-    inferenceApiKey,
+    apiKey,
     inferenceModel: parsed.data.VULTR_INFERENCE_MODEL,
     inferenceUrl: parsed.data.VULTR_INFERENCE_URL,
+    vectorStoreUrl: parsed.data.VULTR_VECTOR_STORE_URL,
+  };
+}
+
+/**
+ * Lazily validates and returns Gradium TTS environment variables.
+ * `GRADIUM_API_KEY` is optional — callers should treat a missing key as
+ * "feature unavailable" and fail soft (see `lib/services/gradiumService.ts`).
+ */
+export function getGradiumEnv() {
+  const parsed = gradiumEnvSchema.safeParse({
+    GRADIUM_API_KEY: process.env.GRADIUM_API_KEY,
+    GRADIUM_VOICE_ID: process.env.GRADIUM_VOICE_ID,
+  });
+
+  if (!parsed.success) {
+    throw new Error(`Invalid Gradium environment variables:\n${formatZodError(parsed.error)}`);
+  }
+
+  return {
+    apiKey: parsed.data.GRADIUM_API_KEY,
+    voiceId: parsed.data.GRADIUM_VOICE_ID,
   };
 }

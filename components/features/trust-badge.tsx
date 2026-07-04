@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { MessageCircle } from "lucide-react"
 
+import { ListenButton } from "@/components/features/listen-button"
 import { Progress } from "@/components/ui/progress"
 import { useAnimatedNumber } from "@/hooks/use-animated-number"
 import { TRUST_COLOR_LABEL, getTrustGradientColor } from "@/lib/trustScore"
@@ -14,9 +15,11 @@ interface TrustBadgeProps {
   colorCode: TrustColorCode | null
   totalVotes: number
   compact?: boolean
+  /** When provided, renders a "🔊 Listen" button that reads the post's trust summary aloud (PROJECT_PLAN.md Section 10). */
+  postId?: string
 }
 
-export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false }: TrustBadgeProps) {
+export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false, postId }: TrustBadgeProps) {
   const percentage = Math.round(trustScore * 100)
   const animatedPercentage = useAnimatedNumber(percentage)
   const color = getTrustGradientColor(trustScore)
@@ -35,9 +38,10 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false 
 
   if (!colorCode) {
     return (
-      <div className="border-threads-border bg-threads-surface inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium text-threads-subtle">
+      <div className="border-threads-border bg-threads-surface inline-flex w-fit items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-xs font-medium text-threads-subtle">
         <MessageCircle className="size-3.5" />
         Debate
+        {postId && <ListenButton postId={postId} className="size-5" />}
       </div>
     )
   }
@@ -46,7 +50,7 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false 
     return (
       <div
         className={cn(
-          "inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-all",
+          "inline-flex items-center gap-2 rounded-xl border py-1.5 pr-1.5 pl-2.5 transition-all",
           justUpdated && "animate-score-pop"
         )}
         style={{
@@ -62,6 +66,7 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false 
         <span className="text-threads-muted text-[11px]">
           · {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
         </span>
+        {postId && <ListenButton postId={postId} className="size-5" />}
       </div>
     )
   }
@@ -84,9 +89,12 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false 
         >
           {Math.round(animatedPercentage)}%
         </span>
-        <span className="text-sm font-semibold" style={{ color }}>
-          {TRUST_COLOR_LABEL[colorCode]}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-semibold" style={{ color }}>
+            {TRUST_COLOR_LABEL[colorCode]}
+          </span>
+          {postId && <ListenButton postId={postId} />}
+        </div>
       </div>
       <Progress
         value={animatedPercentage}

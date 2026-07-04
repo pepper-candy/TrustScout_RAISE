@@ -111,16 +111,30 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
           trustScore={post.trust_score}
           colorCode={post.color_code}
           totalVotes={post.total_votes}
+          postId={post.id}
           compact
         />
 
         {!hasVoted && (
-          <button
-            type="button"
+          // A <div> (not <button>) — it wraps the Switch, and a <button>
+          // cannot legally contain another interactive control like a
+          // <button role="switch">. `stopPropagation` on the Switch itself
+          // keeps a click on the thumb from also bubbling up and re-toggling
+          // via this row's own onClick (which would otherwise cancel out).
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setIsWitness((prev) => !prev)}
-            disabled={isVoting}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                setIsWitness((prev) => !prev)
+              }
+            }}
+            aria-disabled={isVoting}
             className={cn(
-              "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors",
+              "flex w-full cursor-pointer items-center justify-between rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors",
+              isVoting && "pointer-events-none opacity-50",
               isWitness
                 ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
                 : "border-threads-border text-threads-muted hover:bg-white/[0.04]"
@@ -132,8 +146,14 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
                 ? "Marking as firsthand knowledge (Witness)"
                 : "I witnessed this firsthand"}
             </span>
-            <Switch checked={isWitness} onCheckedChange={setIsWitness} disabled={isVoting} size="sm" />
-          </button>
+            <Switch
+              checked={isWitness}
+              onCheckedChange={setIsWitness}
+              onClick={(e) => e.stopPropagation()}
+              disabled={isVoting}
+              size="sm"
+            />
+          </div>
         )}
 
         <div className="-ml-1 flex flex-wrap items-center gap-0.5">

@@ -5,15 +5,22 @@ import { toast } from "sonner"
 
 import { AppHeader } from "@/components/features/app-header"
 import { BottomNav } from "@/components/features/bottom-nav"
+import { ComposePostDialog } from "@/components/features/compose-post-dialog"
 import { PostCard } from "@/components/features/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { type CurrentUserProfile, getCurrentUserProfile, switchToRandomUser } from "@/lib/auth"
-import type { PostWithColor, VoteType } from "@/types/database"
+import type { PostCategory, PostWithColor, VoteType } from "@/types/database"
 
 const VOTE_TOAST_LABEL: Record<VoteType, string> = {
   TRUE: "True",
   PARTIAL: "Partial",
   FALSE: "False",
+}
+
+const CATEGORY_TOAST_LABEL: Record<PostCategory, string> = {
+  FACTUAL: "Factual",
+  OPINION: "Opinion",
+  DEBATE: "Debate",
 }
 
 function FeedSkeleton() {
@@ -50,6 +57,7 @@ export default function Home() {
   const [isShuffling, setIsShuffling] = useState(false)
   const [votingPostId, setVotingPostId] = useState<string | null>(null)
   const [votingType, setVotingType] = useState<VoteType | null>(null)
+  const [isComposeOpen, setIsComposeOpen] = useState(false)
 
   const loadPosts = useCallback(async (userId?: string) => {
     const query = userId ? `?user_id=${userId}` : ""
@@ -133,6 +141,30 @@ export default function Home() {
     }
   }
 
+  async function handleCreatePost(content: string) {
+    if (!profile) {
+      toast.error("Couldn't post", { description: "No user is assigned yet — try again in a moment." })
+      return
+    }
+
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, user_id: profile.id }),
+    })
+
+    if (!response.ok) {
+      const { error } = (await response.json().catch(() => ({}))) as { error?: string }
+      throw new Error(error ?? "Failed to create post")
+    }
+
+    const { post: newPost } = (await response.json()) as { post: PostWithColor }
+    setPosts((prev) => [newPost, ...prev])
+    toast.success(`Posted — classified as ${CATEGORY_TOAST_LABEL[newPost.category]}`, {
+      description: "Vultr AI checked your post before it went live.",
+    })
+  }
+
   async function handleShuffle() {
     if (isShuffling) return
     setIsShuffling(true)
@@ -182,6 +214,14 @@ export default function Home() {
         profile={profile}
         isShuffling={isShuffling}
         onProfileTap={() => void handleShuffle()}
+        onCompose={() => setIsComposeOpen(true)}
+      />
+
+      <ComposePostDialog
+        open={isComposeOpen}
+        onOpenChange={setIsComposeOpen}
+        profile={profile}
+        onSubmit={handleCreatePost}
       />
     </div>
   )

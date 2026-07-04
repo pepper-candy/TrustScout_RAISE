@@ -8,18 +8,26 @@ import { Progress } from "@/components/ui/progress"
 import { useAnimatedNumber } from "@/hooks/use-animated-number"
 import { TRUST_COLOR_LABEL, getTrustGradientColor } from "@/lib/trustScore"
 import { cn } from "@/lib/utils"
-import type { TrustColorCode } from "@/types/database"
+import type { PostCategory, TrustColorCode } from "@/types/database"
+
+/** Non-FACTUAL posts have no trust score, so the pill just echoes the post's own category instead of a hardcoded label. */
+const NO_SCORE_CATEGORY_LABEL: Partial<Record<PostCategory, string>> = {
+  OPINION: "Opinion",
+  DEBATE: "Debate",
+}
 
 interface TrustBadgeProps {
   trustScore: number
   colorCode: TrustColorCode | null
   totalVotes: number
   compact?: boolean
+  /** Required to label the pill correctly when there's no trust score (OPINION/DEBATE) — see `NO_SCORE_CATEGORY_LABEL`. */
+  category: PostCategory
   /** When provided, renders a "🔊 Listen" button that reads the post's trust summary aloud (PROJECT_PLAN.md Section 10). */
   postId?: string
 }
 
-export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false, postId }: TrustBadgeProps) {
+export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false, category, postId }: TrustBadgeProps) {
   const percentage = Math.round(trustScore * 100)
   const animatedPercentage = useAnimatedNumber(percentage)
   const color = getTrustGradientColor(trustScore)
@@ -40,7 +48,7 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false,
     return (
       <div className="border-threads-border bg-threads-surface inline-flex w-fit items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-xs font-medium text-threads-subtle">
         <MessageCircle className="size-3.5" />
-        Debate
+        {NO_SCORE_CATEGORY_LABEL[category] ?? "Debate"}
         {postId && <ListenButton postId={postId} className="size-5" />}
       </div>
     )

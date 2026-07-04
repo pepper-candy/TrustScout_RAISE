@@ -34,10 +34,12 @@ export function clearCurrentUser(): void {
 }
 
 /**
- * Returns the current demo user's full profile from localStorage.
- * On first visit (or if the stored ID no longer exists), picks a random
- * seed user via `/api/profile?random=true` and persists its ID — no login
- * required for the MVP.
+ * Returns the current browser's profile, persisted in localStorage.
+ * On first visit (or if the stored ID no longer exists), this browser is
+ * treated as a brand-new person: `/api/profile?register=true` creates a
+ * fresh profile row with a randomly-lettered username (just for the avatar
+ * initial — the name itself is meaningless) and its ID is persisted so every
+ * vote/post this browser makes afterwards is tied to that same, valid user.
  */
 export async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
   if (typeof window === "undefined") {
@@ -49,11 +51,11 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
     try {
       return await fetchProfile(`id=${existingUserId}`);
     } catch {
-      // Stored ID is stale (e.g. seed data reset) — fall through to reassign.
+      // Stored ID is stale (e.g. seed data reset) — fall through to register a new one.
     }
   }
 
-  const profile = await fetchProfile("random=true");
+  const profile = await fetchProfile("register=true");
   window.localStorage.setItem(STORAGE_KEY, profile.id);
   return profile;
 }
@@ -65,9 +67,11 @@ export async function getCurrentUserId(): Promise<string> {
 }
 
 /**
- * Reassigns the browser to a different random demo user (excluding the
- * current one where possible) — used by the "shuffle user" control so the
- * demo can showcase how different reputations (weights) affect voting.
+ * Reassigns the browser to a different random EXISTING profile (excluding
+ * the current one where possible). Not currently wired to any visible UI
+ * control (per product decision, "shuffle user" is confusing since every
+ * browser now gets its own real identity on first visit) — kept here only
+ * so it's easy to re-enable for debugging reputation/weight differences.
  */
 export async function switchToRandomUser(): Promise<CurrentUserProfile> {
   if (typeof window === "undefined") {

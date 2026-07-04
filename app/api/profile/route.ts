@@ -2,11 +2,17 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { generateRandomUsername } from "@/lib/randomUsername";
 import type { ProfileRow } from "@/types/database";
+
+/** Postgres unique_violation error code — thrown if a generated username collides with an existing one. */
+const UNIQUE_VIOLATION = "23505";
+const MAX_USERNAME_ATTEMPTS = 5;
 
 const querySchema = z.object({
   id: z.uuid().optional(),
   random: z.literal("true").optional(),
+  register: z.literal("true").optional(),
   exclude: z.uuid().optional(),
 });
 
@@ -14,11 +20,12 @@ type PublicProfile = Pick<ProfileRow, "id" | "username" | "accuracy_score">;
 
 /**
  * GET /api/profile
- * Looks up a single demo-user profile — either by `id`, or a random one
- * (optionally excluding `exclude`) for first-visit assignment / the
- * "shuffle user" control. Runs through the service-role client because the
- * anon key has no grants on any table (posts/votes/profiles) — the browser
- * must never query Supabase directly, only through Route Handlers.
+ * Looks up a single demo-user profile — either by `id`, a random existing
+ * one (kept around for debugging the old "shuffle user" control, currently
+ * hidden from the UI), or `register=true` to create and return a brand-new
+ * profile for a first-time visitor. Runs through the service-role client
+ * because the anon key has no grants on any table (posts/votes/profiles) —
+ * the browser must never query Supabase directly, only through Route Handlers.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +33,7 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.safeParse({
       id: searchParams.get("id") ?? undefined,
       random: searchParams.get("random") ?? undefined,
+      register: searchParams.get("register") ?? undefined,
       exclude: searchParams.get("exclude") ?? undefined,
     });
 
@@ -33,8 +41,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 });
     }
 
-    const { id, random, exclude } = parsed.data;
+    const { id, random, register, exclude } = parsed.data;
     const supabase = createServiceRoleClient();
+
+    if (register) {
+      for (let attempt = 0; attempt < MAX_USERNAME_ATTEMPTS; attempt++) {
+        const username = generateRandomUsername();
+        const { data, error } = await supabase
+          .from("profiles")
+          .insert({ username })
+          .select("id, username, accuracy_score")
+          .single();
+
+        if (!error && data) {
+          return NextResponse.json({ profile: data satisfies PublicProfile }, { status: 201 });
+        }
+
+        if (error && error.code !== UNIQUE_VIOLATION) {
+          throw error;
+        }
+        // Username collision (unlikely) — loop and try a freshly generated one.
+      }
+
+      return NextResponse.json({ error: "Failed to register a new user" }, { status: 500 });
+    }
 
     if (id) {
       const { data, error } = await supabase

@@ -111,6 +111,7 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
           trustScore={post.trust_score}
           colorCode={post.color_code}
           totalVotes={post.total_votes}
+          category={post.category}
           postId={post.id}
           compact
         />
@@ -186,12 +187,6 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
             )
           })}
         </div>
-
-        {hasVoted && (
-          <p className="text-threads-muted text-[11px]">
-            You voted <span className="font-semibold text-threads-subtle">{VOTE_CONFIG[post.my_vote!].label}</span> on this post
-          </p>
-        )}
       </div>
     </article>
   )

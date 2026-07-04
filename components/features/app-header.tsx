@@ -10,6 +10,15 @@ import { calculateVoteWeight } from "@/lib/trustScore"
 import { cn } from "@/lib/utils"
 import type { CurrentUserProfile } from "@/lib/auth"
 
+/**
+ * Every browser now gets its own real, randomly-registered identity on
+ * first visit (see `lib/auth.ts`), so manually shuffling to a different
+ * demo user is no longer a user-facing concept. The control (and its
+ * `onShuffle` wiring in `app/page.tsx`) is kept, just hidden, so it's easy
+ * to re-enable while debugging reputation/weight differences.
+ */
+const SHOW_SHUFFLE_DEBUG_CONTROL = false
+
 interface AppHeaderProps {
   profile: CurrentUserProfile | null
   isLoading: boolean
@@ -70,17 +79,19 @@ export function AppHeader({ profile, isLoading, isShuffling, onShuffle }: AppHea
                   {weight?.toFixed(1)}×
                 </Badge>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                title="Switch demo user"
-                onClick={onShuffle}
-                disabled={isShuffling}
-                className="text-threads-muted hover:bg-white/8 hover:text-threads-primary rounded-full"
-              >
-                <Shuffle className={cn("size-4", isShuffling && "animate-spin")} />
-              </Button>
+              {SHOW_SHUFFLE_DEBUG_CONTROL && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Switch demo user"
+                  onClick={onShuffle}
+                  disabled={isShuffling}
+                  className="text-threads-muted hover:bg-white/8 hover:text-threads-primary rounded-full"
+                >
+                  <Shuffle className={cn("size-4", isShuffling && "animate-spin")} />
+                </Button>
+              )}
             </>
           )}
         </div>

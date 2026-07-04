@@ -2,8 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { calculateTrustScore, calculateVoteWeight } from "@/lib/trustScore";
+import { calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
 import type { PostRow, ProfileRow, VoteRow } from "@/types/database";
+
+/** Postgres unique_violation error code, thrown by the `votes_post_id_user_id_key` constraint. */
+const UNIQUE_VIOLATION = "23505";
 
 /**
  * Note: since this MVP has no auth/session (see /lib/auth.ts — the current
@@ -74,7 +77,15 @@ export async function POST(request: NextRequest) {
       consensus_version_at_vote: post.consensus_version,
     });
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      if (insertError.code === UNIQUE_VIOLATION) {
+        return NextResponse.json(
+          { error: "You've already voted on this post." },
+          { status: 409 }
+        );
+      }
+      throw insertError;
+    }
 
     const { data: allVotes, error: votesError } = await supabase
       .from("votes")
@@ -102,7 +113,7 @@ export async function POST(request: NextRequest) {
       throw updateError ?? new Error("Failed to update post after voting");
     }
 
-    return NextResponse.json({ post: updatedPost }, { status: 200 });
+    return NextResponse.json({ post: toPostWithColor(updatedPost, vote_type) }, { status: 200 });
   } catch (error) {
     console.error("POST /api/votes failed:", error);
     return NextResponse.json({ error: "Failed to submit vote" }, { status: 500 });

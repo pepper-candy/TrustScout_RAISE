@@ -60,9 +60,13 @@ export type VoteRow = {
   consensus_version_at_vote: number;
 };
 
-/** A post enriched with a client-facing trust color, computed in the app layer. */
+/**
+ * A post enriched with a client-facing trust color and (optionally) the
+ * viewing user's own vote on it, both computed in the app layer.
+ */
 export type PostWithColor = PostRow & {
   color_code: TrustColorCode | null;
+  my_vote: VoteType | null;
 };
 
 export type Database = {

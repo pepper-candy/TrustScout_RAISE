@@ -1,4 +1,4 @@
-import type { TrustColorCode, VoteType } from "@/types/database";
+import type { PostRow, PostWithColor, TrustColorCode, VoteType } from "@/types/database";
 
 /**
  * All vote/trust-score math lives here in the application layer — per project
@@ -54,4 +54,76 @@ export function getTrustColorCode(trustScore: number): TrustColorCode {
   if (trustScore >= 0.4) return "gray";
   if (trustScore >= 0.2) return "orange";
   return "red";
+}
+
+/**
+ * Shared by both `/api/posts` and `/api/votes` so the two endpoints always
+ * agree on how `color_code` (and the viewer's `my_vote`) are derived —
+ * previously `/api/votes` returned a bare `PostRow`, which silently made the
+ * trust badge flicker to "Debate" right after voting on a FACTUAL post.
+ */
+export function toPostWithColor(post: PostRow, myVote: VoteType | null = null): PostWithColor {
+  return {
+    ...post,
+    color_code: post.category === "FACTUAL" ? getTrustColorCode(post.trust_score) : null,
+    my_vote: myVote,
+  };
+}
+
+export const TRUST_COLOR_LABEL: Record<TrustColorCode, string> = {
+  "dark-green": "Highly Trustworthy",
+  "light-green": "Likely True",
+  gray: "Uncertain",
+  orange: "Likely False",
+  red: "Highly Suspicious",
+};
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const value = hex.replace("#", "");
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return [r, g, b];
+}
+
+function rgbToCss([r, g, b]: [number, number, number]): string {
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+const GRADIENT_STOPS: [number, string][] = [
+  [0, "#FF4444"],
+  [0.5, "#FFAA00"],
+  [1, "#44DD44"],
+];
+
+/**
+ * Interpolates a smooth red → orange/yellow → green color for a 0..1 trust
+ * score, so the badge/progress bar reflect a continuous gradient rather than
+ * jumping between 5 discrete colors.
+ */
+export function getTrustGradientColor(trustScore: number): string {
+  const score = Math.min(1, Math.max(0, trustScore));
+
+  for (let i = 0; i < GRADIENT_STOPS.length - 1; i++) {
+    const [startPos, startColor] = GRADIENT_STOPS[i];
+    const [endPos, endColor] = GRADIENT_STOPS[i + 1];
+
+    if (score >= startPos && score <= endPos) {
+      const localT = endPos === startPos ? 0 : (score - startPos) / (endPos - startPos);
+      const startRgb = hexToRgb(startColor);
+      const endRgb = hexToRgb(endColor);
+      const mixed: [number, number, number] = [
+        lerp(startRgb[0], endRgb[0], localT),
+        lerp(startRgb[1], endRgb[1], localT),
+        lerp(startRgb[2], endRgb[2], localT),
+      ];
+      return rgbToCss(mixed);
+    }
+  }
+
+  return GRADIENT_STOPS[GRADIENT_STOPS.length - 1][1];
 }

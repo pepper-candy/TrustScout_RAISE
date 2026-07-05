@@ -23,7 +23,7 @@ export function BottomNav({ profile, isShuffling, onProfileTap, onCompose }: Bot
       className="border-threads-border fixed inset-x-0 bottom-0 z-20 border-t bg-[rgba(16,16,16,0.85)] backdrop-blur-[14px]"
     >
       <div className="mx-auto grid h-[50px] max-w-[414px] grid-cols-5 items-center px-1">
-        <NavItem icon={Home} label="Home" active />
+        <NavItem icon={Home} label="Home" active faded />
         <NavItem icon={Search} label="Search" disabled />
         <button
           type="button"
@@ -61,12 +61,14 @@ function NavItem({
   active = false,
   disabled = false,
   showDot = false,
+  faded = false,
 }: {
   icon: typeof Home
   label: string
   active?: boolean
   disabled?: boolean
   showDot?: boolean
+  faded?: boolean
 }) {
   return (
     <button
@@ -75,7 +77,7 @@ function NavItem({
       disabled={disabled}
       className={cn(
         "relative flex flex-col items-center justify-center py-2 disabled:cursor-default",
-        disabled && !active && "opacity-50"
+        ((disabled && !active) || faded) && "opacity-50"
       )}
     >
       <Icon

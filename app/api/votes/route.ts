@@ -5,9 +5,6 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
 import type { PostRow, ProfileRow, VoteRow } from "@/types/database";
 
-/** Postgres unique_violation error code, thrown by the `votes_post_id_user_id_key` constraint. */
-const UNIQUE_VIOLATION = "23505";
-
 /**
  * Note: since this MVP has no auth/session (see /lib/auth.ts — the current
  * user's ID lives in localStorage), the client must include `user_id` in the
@@ -24,7 +21,10 @@ const voteRequestSchema = z.object({
 /**
  * POST /api/votes
  * 1. Looks up the voting user's accuracy score and derives their vote weight.
- * 2. Inserts the vote.
+ * 2. Upserts the vote (one row per post/user). A user re-voting on a post
+ *    replaces their previous vote — the `votes_post_id_user_id_key` unique
+ *    constraint is the conflict target, so the existing row is overwritten
+ *    rather than rejected.
  * 3. Recalculates trust_score = SUM(weight * vote_value) / SUM(weight) from
  *    every vote on the post (all calculation happens here, in the app layer).
  * 4. Updates the post's trust_score and total_votes.
@@ -68,24 +68,20 @@ export async function POST(request: NextRequest) {
 
     const weight = calculateVoteWeight(profile.accuracy_score, is_witness);
 
-    const { error: insertError } = await supabase.from("votes").insert({
-      post_id,
-      user_id,
-      vote_type,
-      is_witness,
-      weight,
-      consensus_version_at_vote: post.consensus_version,
-    });
+    const { error: upsertError } = await supabase.from("votes").upsert(
+      {
+        post_id,
+        user_id,
+        vote_type,
+        is_witness,
+        weight,
+        consensus_version_at_vote: post.consensus_version,
+        vote_timestamp: new Date().toISOString(),
+      },
+      { onConflict: "post_id,user_id" }
+    );
 
-    if (insertError) {
-      if (insertError.code === UNIQUE_VIOLATION) {
-        return NextResponse.json(
-          { error: "You've already voted on this post." },
-          { status: 409 }
-        );
-      }
-      throw insertError;
-    }
+    if (upsertError) throw upsertError;
 
     const { data: allVotes, error: votesError } = await supabase
       .from("votes")

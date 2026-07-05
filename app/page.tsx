@@ -10,6 +10,7 @@ import { LandingSplash } from "@/components/features/landing-splash"
 import { PostCard } from "@/components/features/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { mergeRememberedAuthor, rememberPostAuthor } from "@/lib/postAuthors"
+import { sortFeedPosts, type FeedSort } from "@/lib/feedSort"
 import { type CurrentUserProfile, getCurrentUserProfile } from "@/lib/auth"
 import type { PostCategory, PostWithColor, VoteType } from "@/types/database"
 
@@ -54,9 +55,12 @@ export default function Home() {
   const [votingType, setVotingType] = useState<VoteType | null>(null)
   const [isComposeOpen, setIsComposeOpen] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<FeedFilter>("ALL")
+  const [feedSort, setFeedSort] = useState<FeedSort>("latest")
 
-  const visiblePosts =
-    categoryFilter === "ALL" ? posts : posts.filter((post) => post.category === categoryFilter)
+  const visiblePosts = sortFeedPosts(
+    categoryFilter === "ALL" ? posts : posts.filter((post) => post.category === categoryFilter),
+    feedSort
+  )
 
   function cycleCategoryFilter() {
     setCategoryFilter((current) => {
@@ -180,7 +184,7 @@ export default function Home() {
     <div className="bg-background mx-auto flex min-h-full w-full max-w-[414px] flex-col">
       <LandingSplash isLoadingFeed={isLoadingFeed} postsCount={posts.length} />
 
-      <AppHeader />
+      <AppHeader sort={feedSort} onSortChange={setFeedSort} />
 
       <main className="flex flex-1 flex-col pb-[66px]">
         {isLoadingFeed ? (

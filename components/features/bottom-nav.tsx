@@ -17,6 +17,12 @@ const PANEL_ICON_EXPAND_SHIFT = "2.75rem"
 const PANEL_ICON_HALF = "21px"
 const PANEL_LABEL_GAP = "0.5rem"
 
+function formatUserTrustScore(score: number): string {
+  const rounded = Math.round(score * 10) / 10
+  const prefix = rounded > 0 ? "+" : ""
+  return `${prefix}${rounded}`
+}
+
 interface BottomNavProps {
   profile: CurrentUserProfile | null
   isLoading: boolean
@@ -132,7 +138,7 @@ export function BottomNav({
         ) : (
           <button
             type="button"
-            aria-label={`Signed in as @${profile.username}. Tap to show.`}
+            aria-label={`Signed in as @${profile.username}, trust score ${formatUserTrustScore(profile.accuracy_score)}. Tap to show.`}
             onClick={handleProfileClick}
             className="group/profile relative block h-[42px] w-full min-w-0 pl-3 transition-opacity active:opacity-90"
           >
@@ -152,7 +158,7 @@ export function BottomNav({
               aria-hidden={!profileLabelVisible}
               className={cn(
                 "absolute top-0 flex h-[42px] items-center overflow-hidden transition-[max-width,opacity,left] duration-300 ease-out",
-                profileLabelVisible ? "max-w-28 opacity-100" : "max-w-0 opacity-0"
+                profileLabelVisible ? "max-w-40 opacity-100" : "max-w-0 opacity-0"
               )}
               style={{
                 left: profileLabelVisible
@@ -162,6 +168,10 @@ export function BottomNav({
             >
               <span className="truncate whitespace-nowrap pr-0.5 text-[11px] font-semibold text-threads-primary">
                 @{profile.username}
+                <span className="text-threads-muted font-medium">
+                  {" · "}
+                  {formatUserTrustScore(profile.accuracy_score)}
+                </span>
               </span>
             </span>
           </button>

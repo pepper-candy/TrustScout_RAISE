@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Cursor Cloud specific instructions
 
-TruthScout is a single Next.js 16 app (App Router). Standard commands live in `README.md`/`package.json`: `npm run dev` (port 3000), `npm run build`, `npm run lint`. Dependencies are refreshed automatically by the startup `npm install`.
+TrustScout is a single Next.js 16 app (App Router). Standard commands live in `README.md`/`package.json`: `npm run dev` (port 3000), `npm run build`, `npm run lint`. Dependencies are refreshed automatically by the startup `npm install`.
 
 ### Backend (Supabase) — non-obvious
 All API routes talk to Supabase via the service-role client. The three Supabase credentials are provided as **Cursor Secrets (injected env vars)** and point at the hosted project, which already contains `profiles`/`posts`/`votes` with seed data (the repo ships no migrations): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. `lib/env.ts` validates the two `NEXT_PUBLIC_*` vars **eagerly at dev runtime**, so `npm run dev` throws immediately if they aren't in the dev server process's environment. Gotchas:

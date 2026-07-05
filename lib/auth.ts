@@ -1,6 +1,6 @@
 import type { ProfileRow } from "@/types/database";
 
-const STORAGE_KEY = "truthscout_user_id";
+const STORAGE_KEY = "trustscout_user_id";
 
 export type CurrentUserProfile = Pick<ProfileRow, "id" | "username" | "accuracy_score">;
 

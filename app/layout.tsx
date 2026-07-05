@@ -22,7 +22,7 @@ const filterFont = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: "TruthScout",
+  title: "TrustScout",
   description: "A crowdsourced truth verification layer for social media content.",
   icons: {
     icon: "/logo.svg",

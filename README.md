@@ -1,4 +1,4 @@
-# TruthScout
+# TrustScout
 
 A crowdsourced truth verification layer for social media content, built for RAISE Hackathon 2026. Users vote **True / Partial / False** on posts; a reputation-weighted consensus algorithm produces a color-coded trust score. See [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) for the full product spec.
 

@@ -137,7 +137,10 @@ export default function Home() {
         throw new Error(error ?? "Failed to submit vote")
       }
 
-      const { post: updatedPost } = (await response.json()) as { post: PostWithColor }
+      const { post: updatedPost, profile: updatedProfile } = (await response.json()) as {
+        post: PostWithColor
+        profile?: CurrentUserProfile | null
+      }
       setPosts((prev) =>
         prev.map((post) =>
           post.id === updatedPost.id
@@ -145,6 +148,9 @@ export default function Home() {
             : post
         )
       )
+      if (updatedProfile) {
+        setProfile(updatedProfile)
+      }
     } catch (err) {
       toast.error("Couldn't submit your vote", {
         description: err instanceof Error ? err.message : "Please try again.",

@@ -54,7 +54,7 @@ export function LandingSplash({ isLoadingFeed, postsCount }: LandingSplashProps)
         width={280}
         height={280}
         priority
-        className="h-auto w-full md:w-[min(72vw,280px)] transition-opacity ease-out"
+        className="h-auto w-[min(72vw,280px)] transition-opacity ease-out"
         style={{
           opacity: phase === "fading" ? 0 : 1,
           transitionDuration: `${FADE_OUT_MS}ms`,

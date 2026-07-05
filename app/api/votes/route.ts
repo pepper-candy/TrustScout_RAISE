@@ -3,8 +3,15 @@ import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { resolveAuthorUsername } from "@/lib/postAuthors";
+import { applyConsensusAccuracyJudgments } from "@/lib/accuracyJudgment";
+import {
+  deriveConsensusVerdict,
+  nextConsensusVersion,
+  shouldRunAccuracyJudgment,
+} from "@/lib/consensus";
+import { fetchPostVotes } from "@/lib/fetchPostVotes";
 import { calculateAgreeScore, calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
-import type { PostRow, ProfileRow, VoteRow } from "@/types/database";
+import type { PostRow, ProfileRow } from "@/types/database";
 
 /**
  * Note: since this MVP has no auth/session (see /lib/auth.ts — the current
@@ -29,6 +36,8 @@ const voteRequestSchema = z.object({
  * 3. Recalculates trust_score = SUM(weight * vote_value) / SUM(weight) from
  *    every vote on the post (all calculation happens here, in the app layer).
  * 4. Updates the post's trust_score and total_votes.
+ * 5. On factual posts, when consensus locks or shifts, adjusts voter accuracy_score
+ *    for unjudged votes only. Stored vote weights are never rewritten.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -89,6 +98,10 @@ export async function POST(request: NextRequest) {
 
     const weight = isFactual ? calculateVoteWeight(profile.accuracy_score, is_witness) : 1;
 
+    const previousVerdict = isFactual
+      ? deriveConsensusVerdict(post.trust_score, post.total_votes)
+      : null;
+
     const { error: upsertError } = await supabase.from("votes").upsert(
       {
         post_id,
@@ -104,22 +117,35 @@ export async function POST(request: NextRequest) {
 
     if (upsertError) throw upsertError;
 
-    const { data: allVotes, error: votesError } = await supabase
-      .from("votes")
-      .select("vote_type, weight")
-      .eq("post_id", post_id)
-      .overrideTypes<Pick<VoteRow, "vote_type" | "weight">[], { merge: false }>();
-
-    if (votesError) throw votesError;
-
-    const votes = allVotes ?? [];
+    const { votes, judgmentColumnAvailable } = await fetchPostVotes(supabase, post_id);
     const trustScore = isFactual ? calculateTrustScore(votes) : calculateAgreeScore(votes);
+
+    const newVerdict = isFactual ? deriveConsensusVerdict(trustScore, votes.length) : null;
+    const consensusVersion = isFactual
+      ? nextConsensusVersion(post.consensus_version, previousVerdict, newVerdict)
+      : post.consensus_version;
+
+    let updatedAccuracyByUser = new Map<string, number>();
+
+    if (isFactual && shouldRunAccuracyJudgment(newVerdict, votes.length) && judgmentColumnAvailable) {
+      updatedAccuracyByUser = await applyConsensusAccuracyJudgments(supabase, {
+        postId: post_id,
+        verdict: newVerdict!,
+        consensusVersion,
+        votes,
+      });
+    } else if (isFactual && shouldRunAccuracyJudgment(newVerdict, votes.length) && !judgmentColumnAvailable) {
+      console.warn(
+        "Skipping consensus accuracy updates — run scripts/add-vote-accuracy-judged-version.sql on Supabase"
+      );
+    }
 
     const { data: updatedPost, error: updateError } = await supabase
       .from("posts")
       .update({
         trust_score: trustScore,
         total_votes: votes.length,
+        consensus_version: consensusVersion,
       })
       .eq("id", post_id)
       .select("*")
@@ -140,8 +166,21 @@ export async function POST(request: NextRequest) {
     const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]));
     const authorUsername = resolveAuthorUsername(updatedPost, profiles, usernameById);
 
+    let voterProfile: Pick<ProfileRow, "id" | "username" | "accuracy_score"> | null = null;
+    const updatedAccuracy = updatedAccuracyByUser.get(user_id);
+    if (updatedAccuracy !== undefined) {
+      voterProfile = {
+        id: user_id,
+        username: usernameById.get(user_id) ?? "guest",
+        accuracy_score: updatedAccuracy,
+      };
+    }
+
     return NextResponse.json(
-      { post: toPostWithColor(updatedPost, vote_type, authorUsername) },
+      {
+        post: toPostWithColor(updatedPost, vote_type, authorUsername),
+        profile: voterProfile,
+      },
       { status: 200 }
     );
   } catch (error) {

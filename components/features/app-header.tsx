@@ -5,6 +5,7 @@ import { Clock, MoreHorizontal, TrendingUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+import { ListenBriefingButton } from "@/components/features/listen-briefing-button"
 import type { FeedSort } from "@/lib/feedSort"
 
 interface AppHeaderProps {
@@ -12,7 +13,7 @@ interface AppHeaderProps {
   onSortChange: (sort: FeedSort) => void
 }
 
-function TruthScoutMark() {
+function TrustScoutMark() {
   return <img src="/logo.svg" alt="" aria-hidden className="size-8" />
 }
 
@@ -46,10 +47,12 @@ export function AppHeader({ sort, onSortChange }: AppHeaderProps) {
         </div>
 
         <div className="flex items-center justify-center">
-          <TruthScoutMark />
+          <TrustScoutMark />
         </div>
 
-        <div aria-hidden className="size-8" />
+        <div className="flex items-center justify-end">
+          <ListenBriefingButton />
+        </div>
       </div>
     </header>
   )

@@ -133,6 +133,22 @@ export function buildTrustSummaryText(post: PostWithColor): string {
   return `Here's the post: ${post.content}. Community trust score: ${percentage} percent, rated ${label}, based on ${post.total_votes} ${voteWord}.`;
 }
 
+/** Combined script for the header "Popular briefing" Gradium readout. */
+export function buildPopularBriefingText(posts: PostWithColor[]): string {
+  if (posts.length === 0) return "";
+
+  const intro =
+    posts.length === 1
+      ? "Here is the most popular post on TrustScout."
+      : `Here are the top ${posts.length} popular posts on TrustScout.`;
+
+  const sections = posts.map(
+    (post, index) => `Post ${index + 1}. ${buildTrustSummaryText(post)}`
+  );
+
+  return [intro, ...sections].join(" ");
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }

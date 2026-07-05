@@ -1,4 +1,4 @@
-# TruthScout - Complete Project Plan
+# TrustScout - Complete Project Plan
 ## RAISE Hackathon 2026 - Paris
 
 ---
@@ -12,7 +12,7 @@ Social media is flooded with AI-generated content, misinformation, and biased na
 - Opaque (users don't know why something is flagged)
 
 ### Our Solution
-TruthScout is a **crowdsourced truth verification layer** for social media content. Users interact through a frictionless swipe interface (True / Partial / False) to vote on the credibility of posts. A weighted reputation system ensures that **consistently accurate voters** have more influence, while **consistently inaccurate voters** lose influence over time.
+TrustScout is a **crowdsourced truth verification layer** for social media content. Users interact through a frictionless swipe interface (True / Partial / False) to vote on the credibility of posts. A weighted reputation system ensures that **consistently accurate voters** have more influence, while **consistently inaccurate voters** lose influence over time.
 
 ### MVP Scope
 - **Input Format**: Text-based posts only (no images/videos for hackathon)
@@ -408,7 +408,7 @@ npx shadcn@latest add button card avatar badge progress
 
 ## 15. Future Steps (Post-MVP / Beyond Hackathon)
 
-The following features are **not required for the hackathon MVP**. They represent the long-term vision for TruthScout as a production-ready platform. Including this section demonstrates forward-thinking and product maturity to judges.
+The following features are **not required for the hackathon MVP**. They represent the long-term vision for TrustScout as a production-ready platform. Including this section demonstrates forward-thinking and product maturity to judges.
 
 ---
 
@@ -668,7 +668,7 @@ const DEMO_USERS = [
 // Get or set current user
 export function getCurrentUserId(): string {
   // Check localStorage
-  let userId = localStorage.getItem('truthscout_user_id');
+  let userId = localStorage.getItem('trustscout_user_id');
   
   if (!userId) {
     // First visit - randomly assign a user

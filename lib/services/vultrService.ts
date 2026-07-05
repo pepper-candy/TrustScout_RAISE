@@ -202,7 +202,7 @@ export async function findSimilarTexts(
   try {
     const createResponse = await vultrFetch(env.vectorStoreUrl, env.apiKey, {
       method: "POST",
-      body: JSON.stringify({ name: `truthscout-similarity-${Date.now()}` }),
+      body: JSON.stringify({ name: `trustscout-similarity-${Date.now()}` }),
     });
     if (!createResponse.ok) {
       throw new Error(`Vultr vector store collection creation failed with status ${createResponse.status}`);

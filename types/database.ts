@@ -59,6 +59,8 @@ export type VoteRow = {
   weight: number;
   vote_timestamp: string;
   consensus_version_at_vote: number;
+  /** Consensus version this vote was last accuracy-judged against (0 = never). */
+  accuracy_judged_consensus_version?: number;
 };
 
 /**

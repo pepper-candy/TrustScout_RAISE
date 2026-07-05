@@ -1,6 +1,6 @@
 import type { PostRow, ProfileRow } from "@/types/database";
 
-const POST_AUTHORS_STORAGE_KEY = "truthscout_post_authors";
+const POST_AUTHORS_STORAGE_KEY = "trustscout_post_authors";
 
 type ProfileUsername = Pick<ProfileRow, "id" | "username">;
 

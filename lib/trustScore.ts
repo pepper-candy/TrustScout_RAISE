@@ -89,12 +89,17 @@ export function getTrustColorCode(trustScore: number): TrustColorCode {
  * previously `/api/votes` returned a bare `PostRow`, which silently made the
  * trust badge flicker to "Debate" right after voting on a FACTUAL post.
  */
-export function toPostWithColor(post: PostRow, myVote: VoteType | null = null): PostWithColor {
+export function toPostWithColor(
+  post: PostRow,
+  myVote: VoteType | null = null,
+  authorUsername = "guest"
+): PostWithColor {
   const displayScore = getDisplayTrustScore(post);
   return {
     ...post,
     color_code: post.category === "FACTUAL" ? getTrustColorCode(displayScore) : null,
     my_vote: myVote,
+    author_username: authorUsername,
   };
 }
 

@@ -177,6 +177,9 @@
 }
 
 @layer utilities {
+  .font-filter {
+    font-family: var(--font-filter), var(--font-geist-sans), sans-serif;
+  }
   .animate-witness-glow {
     animation: witness-glow 2.2s ease-in-out infinite;
   }

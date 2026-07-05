@@ -9,18 +9,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import type { PostCategory, PostWithColor, VoteType } from "@/types/database"
 
-const CATEGORY_LABEL: Record<PostWithColor["category"], string> = {
-  FACTUAL: "Factual",
-  OPINION: "Opinion",
-  DEBATE: "Debate",
-}
-
-const CATEGORY_AVATAR: Record<PostWithColor["category"], string> = {
-  FACTUAL: "F",
-  OPINION: "O",
-  DEBATE: "D",
-}
-
 const FACTUAL_VOTE_CONFIG: Record<
   VoteType,
   { label: string; icon: typeof CircleCheck; activeClassName: string }
@@ -205,7 +193,7 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
       <div className="relative pt-1">
         <Avatar className="size-9 border border-threads-border">
           <AvatarFallback className="bg-threads-surface text-threads-primary text-xs font-semibold">
-            {CATEGORY_AVATAR[post.category]}
+            {post.author_username.slice(0, 1).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       </div>
@@ -213,9 +201,7 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
       <div className="min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[15px] leading-[21px]">
-            <span className="truncate font-semibold text-threads-primary">TruthScout</span>
-            <span className="text-threads-muted">·</span>
-            <span className="font-bold text-threads-primary">{CATEGORY_LABEL[post.category]}</span>
+            <span className="truncate font-semibold text-threads-primary">@{post.author_username}</span>
             <span className="text-threads-muted">·</span>
             <time className="text-threads-muted text-[14.6px]" dateTime={post.created_at}>
               {formatPostDate(post.created_at)}

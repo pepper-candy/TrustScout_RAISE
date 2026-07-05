@@ -47,6 +47,7 @@ export type PostRow = {
   total_votes: number;
   consensus_version: number;
   created_at: string;
+  user_id?: string | null;
 };
 
 export type VoteRow = {
@@ -67,6 +68,7 @@ export type VoteRow = {
 export type PostWithColor = PostRow & {
   color_code: TrustColorCode | null;
   my_vote: VoteType | null;
+  author_username: string;
 };
 
 export type Database = {

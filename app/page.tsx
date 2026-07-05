@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { AppHeader } from "@/components/features/app-header"
-import { BottomNav } from "@/components/features/bottom-nav"
+import { BottomNav, FEED_FILTER_CYCLE, type FeedFilter } from "@/components/features/bottom-nav"
 import { ComposePostDialog } from "@/components/features/compose-post-dialog"
 import { LandingSplash } from "@/components/features/landing-splash"
 import { PostCard } from "@/components/features/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type CurrentUserProfile, getCurrentUserProfile, switchToRandomUser } from "@/lib/auth"
+import { mergeRememberedAuthor, rememberPostAuthor } from "@/lib/postAuthors"
+import { type CurrentUserProfile, getCurrentUserProfile } from "@/lib/auth"
 import type { PostCategory, PostWithColor, VoteType } from "@/types/database"
 
 const CATEGORY_TOAST_LABEL: Record<PostCategory, string> = {
@@ -49,10 +50,20 @@ export default function Home() {
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null)
   const [isLoadingFeed, setIsLoadingFeed] = useState(true)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
-  const [isShuffling, setIsShuffling] = useState(false)
   const [votingPostId, setVotingPostId] = useState<string | null>(null)
   const [votingType, setVotingType] = useState<VoteType | null>(null)
   const [isComposeOpen, setIsComposeOpen] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState<FeedFilter>("ALL")
+
+  const visiblePosts =
+    categoryFilter === "ALL" ? posts : posts.filter((post) => post.category === categoryFilter)
+
+  function cycleCategoryFilter() {
+    setCategoryFilter((current) => {
+      const index = FEED_FILTER_CYCLE.indexOf(current)
+      return FEED_FILTER_CYCLE[(index + 1) % FEED_FILTER_CYCLE.length]
+    })
+  }
 
   const loadPosts = useCallback(async (userId?: string) => {
     const query = userId ? `?user_id=${userId}` : ""
@@ -60,7 +71,12 @@ export default function Home() {
     if (!response.ok) throw new Error("Failed to load the feed")
 
     const { posts: fetchedPosts } = (await response.json()) as { posts: PostWithColor[] }
-    setPosts(fetchedPosts)
+    setPosts(
+      fetchedPosts.map((post) => ({
+        ...post,
+        author_username: mergeRememberedAuthor(post),
+      }))
+    )
   }, [])
 
   useEffect(() => {
@@ -118,7 +134,13 @@ export default function Home() {
       }
 
       const { post: updatedPost } = (await response.json()) as { post: PostWithColor }
-      setPosts((prev) => prev.map((post) => (post.id === updatedPost.id ? updatedPost : post)))
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === updatedPost.id
+            ? { ...updatedPost, author_username: mergeRememberedAuthor(updatedPost) }
+            : post
+        )
+      )
     } catch (err) {
       toast.error("Couldn't submit your vote", {
         description: err instanceof Error ? err.message : "Please try again.",
@@ -147,49 +169,28 @@ export default function Home() {
     }
 
     const { post: newPost } = (await response.json()) as { post: PostWithColor }
-    setPosts((prev) => [newPost, ...prev])
+    rememberPostAuthor(newPost.id, profile.username)
+    setPosts((prev) => [{ ...newPost, author_username: profile.username }, ...prev])
     toast.success(`Posted — classified as ${CATEGORY_TOAST_LABEL[newPost.category]}`, {
       description: "Vultr AI checked your post before it went live.",
     })
-  }
-
-  async function handleShuffle() {
-    if (isShuffling) return
-    setIsShuffling(true)
-    try {
-      const newProfile = await switchToRandomUser()
-      setProfile(newProfile)
-      await loadPosts(newProfile.id)
-      toast.success(`Switched to @${newProfile.username}`, {
-        description: "You're now voting with a different reputation weight.",
-      })
-    } catch (err) {
-      toast.error("Couldn't switch user", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      })
-    } finally {
-      setIsShuffling(false)
-    }
   }
 
   return (
     <div className="bg-background mx-auto flex min-h-full w-full max-w-[414px] flex-col">
       <LandingSplash isLoadingFeed={isLoadingFeed} postsCount={posts.length} />
 
-      <AppHeader
-        profile={profile}
-        isLoading={isLoadingUser}
-        isShuffling={isShuffling}
-        onShuffle={() => void handleShuffle()}
-      />
+      <AppHeader />
 
       <main className="flex flex-1 flex-col pb-[66px]">
         {isLoadingFeed ? (
           <FeedSkeleton />
-        ) : posts.length === 0 ? (
-          <p className="text-threads-muted py-16 text-center text-sm">No posts yet.</p>
+        ) : visiblePosts.length === 0 ? (
+          <p className="text-threads-muted py-16 text-center text-sm">
+            No {categoryFilter === "ALL" ? "" : categoryFilter.toLowerCase()} posts yet.
+          </p>
         ) : (
-          posts.map((post) => (
+          visiblePosts.map((post) => (
             <PostCard
               key={post.id}
               post={post}
@@ -202,8 +203,9 @@ export default function Home() {
 
       <BottomNav
         profile={profile}
-        isShuffling={isShuffling}
-        onProfileTap={() => void handleShuffle()}
+        isLoading={isLoadingUser}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={cycleCategoryFilter}
         onCompose={() => setIsComposeOpen(true)}
       />
 

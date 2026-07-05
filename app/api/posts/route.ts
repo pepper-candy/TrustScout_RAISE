@@ -2,9 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { resolveAuthorUsername } from "@/lib/postAuthors";
 import { classifyPostContent } from "@/lib/services/vultrService";
 import { toPostWithColor } from "@/lib/trustScore";
-import type { PostRow, PostWithColor, VoteRow } from "@/types/database";
+import type { PostRow, PostWithColor, ProfileRow, VoteRow } from "@/types/database";
 
 const querySchema = z.object({
   user_id: z.uuid().optional(),
@@ -38,6 +39,16 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServiceRoleClient();
 
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .order("created_at", { ascending: true })
+      .overrideTypes<Pick<ProfileRow, "id" | "username">[], { merge: false }>();
+
+    if (profilesError) throw profilesError;
+
+    const profiles = allProfiles ?? [];
+
     const { data: posts, error } = await supabase
       .from("posts")
       .select("*")
@@ -45,6 +56,12 @@ export async function GET(request: NextRequest) {
       .overrideTypes<PostRow[], { merge: false }>();
 
     if (error) throw error;
+
+    const postRows = posts ?? [];
+    const usernameById = new Map<string, string>();
+    for (const profile of profiles) {
+      usernameById.set(profile.id, profile.username);
+    }
 
     const myVoteByPostId = new Map<string, VoteRow["vote_type"]>();
     const { user_id } = parsedQuery.data;
@@ -63,8 +80,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const postsWithColor: PostWithColor[] = (posts ?? []).map((post) =>
-      toPostWithColor(post, myVoteByPostId.get(post.id) ?? null)
+    const postsWithColor: PostWithColor[] = postRows.map((post) =>
+      toPostWithColor(
+        post,
+        myVoteByPostId.get(post.id) ?? null,
+        resolveAuthorUsername(post, profiles, usernameById)
+      )
     );
 
     return NextResponse.json({ posts: postsWithColor }, { status: 200 });
@@ -101,9 +122,10 @@ export async function POST(request: NextRequest) {
 
     const { data: author, error: authorError } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, username")
       .eq("id", user_id)
-      .single();
+      .single()
+      .overrideTypes<Pick<ProfileRow, "id" | "username">, { merge: false }>();
 
     if (authorError || !author) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -111,24 +133,46 @@ export async function POST(request: NextRequest) {
 
     const category = await classifyPostContent(content);
 
-    const { data: post, error: insertError } = await supabase
+    const baseInsert = {
+      content,
+      category,
+      trust_score: 0,
+      total_votes: 0,
+      consensus_version: 1,
+    };
+
+    let post: PostRow | null = null;
+    let insertError: { code?: string; message?: string } | null = null;
+
+    const withAuthor = await supabase
       .from("posts")
-      .insert({
-        content,
-        category,
-        trust_score: 0,
-        total_votes: 0,
-        consensus_version: 1,
-      })
+      .insert({ ...baseInsert, user_id })
       .select("*")
       .single()
       .overrideTypes<PostRow, { merge: false }>();
+
+    if (!withAuthor.error && withAuthor.data) {
+      post = withAuthor.data;
+    } else if (withAuthor.error?.code === "PGRST204") {
+      const withoutAuthor = await supabase
+        .from("posts")
+        .insert(baseInsert)
+        .select("*")
+        .single()
+        .overrideTypes<PostRow, { merge: false }>();
+
+      post = withoutAuthor.data;
+      insertError = withoutAuthor.error;
+    } else {
+      post = withAuthor.data;
+      insertError = withAuthor.error;
+    }
 
     if (insertError || !post) {
       throw insertError ?? new Error("Failed to create post");
     }
 
-    return NextResponse.json({ post: toPostWithColor(post, null) }, { status: 201 });
+    return NextResponse.json({ post: toPostWithColor(post, null, author.username) }, { status: 201 });
   } catch (error) {
     console.error("POST /api/posts failed:", error);
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 });

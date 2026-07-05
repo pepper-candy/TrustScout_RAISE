@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { resolveAuthorUsername } from "@/lib/postAuthors";
 import { calculateAgreeScore, calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
 import type { PostRow, ProfileRow, VoteRow } from "@/types/database";
 
@@ -126,7 +127,20 @@ export async function POST(request: NextRequest) {
       throw updateError ?? new Error("Failed to update post after voting");
     }
 
-    return NextResponse.json({ post: toPostWithColor(updatedPost, vote_type) }, { status: 200 });
+    const { data: allProfiles } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .order("created_at", { ascending: true })
+      .overrideTypes<Pick<ProfileRow, "id" | "username">[], { merge: false }>();
+
+    const profiles = allProfiles ?? [];
+    const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]));
+    const authorUsername = resolveAuthorUsername(updatedPost, profiles, usernameById);
+
+    return NextResponse.json(
+      { post: toPostWithColor(updatedPost, vote_type, authorUsername) },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("POST /api/votes failed:", error);
     return NextResponse.json({ error: "Failed to submit vote" }, { status: 500 });

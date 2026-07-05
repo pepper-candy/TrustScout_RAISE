@@ -46,12 +46,13 @@ export function calculateTrustScore(votes: { vote_type: VoteType; weight: number
 }
 
 /**
- * OPINION/DEBATE: each vote counts equally (weight 1). Agree = swipe right (TRUE).
+ * OPINION/DEBATE: each vote counts equally (weight 1).
+ * TRUE = 1 (agree), PARTIAL = 0.5 (neutral), FALSE = 0 (disagree).
  */
 export function calculateAgreeScore(votes: { vote_type: VoteType }[]): number {
   if (votes.length === 0) return 0;
-  const agreeCount = votes.filter((vote) => vote.vote_type === "TRUE").length;
-  return agreeCount / votes.length;
+  const weightedSum = votes.reduce((sum, vote) => sum + VOTE_VALUE[vote.vote_type], 0);
+  return weightedSum / votes.length;
 }
 
 /**

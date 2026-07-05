@@ -55,7 +55,7 @@ export default function Home() {
   const [votingType, setVotingType] = useState<VoteType | null>(null)
   const [isComposeOpen, setIsComposeOpen] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<FeedFilter>("ALL")
-  const [feedSort, setFeedSort] = useState<FeedSort>("latest")
+  const [feedSort, setFeedSort] = useState<FeedSort>("popular")
 
   const visiblePosts = sortFeedPosts(
     categoryFilter === "ALL" ? posts : posts.filter((post) => post.category === categoryFilter),

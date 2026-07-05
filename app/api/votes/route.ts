@@ -58,13 +58,16 @@ export async function POST(request: NextRequest) {
 
     const isFactual = post.category === "FACTUAL";
 
-    if (!isFactual) {
+    if (post.category === "DEBATE") {
       if (vote_type === "PARTIAL") {
         return NextResponse.json(
-          { error: "Partial votes are only allowed on factual posts" },
+          { error: "Neutral votes are only allowed on factual and opinion posts" },
           { status: 400 }
         );
       }
+    }
+
+    if (!isFactual) {
       if (is_witness) {
         return NextResponse.json(
           { error: "Witness votes are only allowed on factual posts" },

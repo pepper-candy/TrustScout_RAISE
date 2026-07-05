@@ -74,7 +74,7 @@ export function ComposePostDialog({ open, onOpenChange, onSubmit }: ComposePostD
                   void handleSubmit()
                 }
               }}
-              placeholder="What's new?"
+              placeholder="What's NEW?"
               disabled={isSubmitting}
               rows={4}
               className="text-threads-primary min-h-[84px] border-none bg-transparent p-0 text-[15px] leading-[21px] shadow-none focus-visible:ring-0"

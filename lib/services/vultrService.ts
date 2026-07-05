@@ -18,12 +18,39 @@ const vultrChatResponseSchema = z.object({
 });
 
 const CLASSIFICATION_SYSTEM_PROMPT = [
-  "Classify the user's post into EXACTLY one category:",
-  "- FACTUAL: Claims a verifiable event, statistic, or attribution. Contains references to specific people, places, times, or numbers.",
-  "- OPINION: Subjective preference, ethical judgment, or review. No objective verification possible.",
-  "- DEBATE: Open-ended discussion question or prompt. No objective right or wrong answer.",
-  "Output ONLY the category name: FACTUAL / OPINION / DEBATE",
+  "Classify the user's post into EXACTLY one category.",
+  "",
+  "Examples:",
+  '- "I am happy today." → OPINION',
+  '- "do i look handsome today?" → DEBATE',
+  '- "There was an earthquake in Japan." → FACTUAL',
+  '- "This is the best phone ever." → OPINION',
+  '- "Should students date in school?" → DEBATE',
+  '- "Mr. Ho resigned from ABC Corp." → FACTUAL',
+  "",
+  "Rules:",
+  "- OPINION: personal feelings, preferences, subjective judgments (especially first-person)",
+  "- DEBATE: questions or open prompts with no single verifiable answer",
+  "- FACTUAL: claims about real-world events, stats, or third-party facts that could be verified",
+  "",
+  "Output ONLY: FACTUAL / OPINION / DEBATE",
 ].join("\n");
+
+/**
+ * Demo QA — expected heuristic outcomes (Vultr only runs when these return null):
+ * | Post                                | Category |
+ * | "I am happy today."                 | OPINION  |
+ * | "do i look handsome today?"         | DEBATE   |
+ * | "There was an earthquake in Japan." | FACTUAL  |
+ * | "Mr. Ho resigned from ABC."         | FACTUAL  |
+ */
+const FIRST_PERSON_PATTERN = /\b(i|i'm|i am|my|me)\b/;
+const SUBJECTIVE_PATTERN =
+  /\b(happy|sad|feel|feeling|felt|love|hate|think|believe|best|worst|beautiful|handsome|ugly|amazing|terrible|awful|favorite|favourite|like|dislike|proud|excited|angry|grateful|tired|glad|worried|scared|annoyed|bored|lonely|nervous|surprised|disappointed|in my opinion)\b/;
+const FACTUAL_PATTERN =
+  /\b(there is|there was|there are|there were|happened|announced|reported|earthquake|died|resigned|percent|%|\d+)\b/;
+const DEBATE_START_PATTERN =
+  /^(do|does|is|are|should|would|what|who|why|how|can|could|will|shall)\b/;
 
 function parseCategory(rawOutput: string): PostCategory | null {
   const normalized = rawOutput.trim().toUpperCase();
@@ -37,34 +64,42 @@ function parseCategory(rawOutput: string): PostCategory | null {
   return matchedCategory.success ? matchedCategory.data : null;
 }
 
-function classifyWithFallback(content: string): PostCategory {
+/** Returns a category when rules match confidently; null when ambiguous (defer to Vultr). */
+export function classifyWithHeuristics(content: string): PostCategory | null {
   const normalized = content.trim().toLowerCase();
+  if (!normalized) return null;
 
   if (
     normalized.endsWith("?") ||
+    DEBATE_START_PATTERN.test(normalized) ||
     /\b(should|would you|what do you think|do you agree|debate)\b/.test(normalized)
   ) {
     return "DEBATE";
   }
 
   if (
-    /\b(i think|i believe|in my opinion|best|worst|love|hate|beautiful|terrible|amazing|awful|favorite)\b/.test(
-      normalized
-    )
+    (FIRST_PERSON_PATTERN.test(normalized) && SUBJECTIVE_PATTERN.test(normalized)) ||
+    /\b(i think|i believe|in my opinion)\b/.test(normalized) ||
+    /\b(best|worst|love|hate|beautiful|terrible|amazing|awful|favorite|favourite)\b/.test(normalized)
   ) {
     return "OPINION";
   }
 
-  return "FACTUAL";
+  if (FACTUAL_PATTERN.test(normalized)) {
+    return "FACTUAL";
+  }
+
+  return null;
 }
 
 export async function classifyPostContent(content: string): Promise<PostCategory> {
-  const fallbackCategory = classifyWithFallback(content);
+  const heuristic = classifyWithHeuristics(content);
+  if (heuristic !== null) return heuristic;
 
   try {
     const env = getVultrEnv();
     if (!env.apiKey) {
-      return fallbackCategory;
+      return "FACTUAL";
     }
 
     const response = await fetch(env.inferenceUrl, {
@@ -86,7 +121,7 @@ export async function classifyPostContent(content: string): Promise<PostCategory
             content,
           },
         ],
-        max_tokens: 8,
+        max_tokens: 16,
         temperature: 0,
       }),
     });
@@ -101,10 +136,10 @@ export async function classifyPostContent(content: string): Promise<PostCategory
       throw new Error("Vultr classification returned an unexpected response shape");
     }
 
-    return parseCategory(parsed.data.choices[0].message.content) ?? fallbackCategory;
+    return parseCategory(parsed.data.choices[0].message.content) ?? "FACTUAL";
   } catch (error) {
-    console.error("Vultr classification unavailable; using local fallback:", error);
-    return fallbackCategory;
+    console.error("Vultr classification unavailable; defaulting to FACTUAL:", error);
+    return "FACTUAL";
   }
 }
 

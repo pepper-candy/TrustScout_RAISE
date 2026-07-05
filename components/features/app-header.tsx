@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import type { MouseEvent, ReactNode } from "react"
 import { Clock, MoreHorizontal, TrendingUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -17,8 +17,16 @@ function TruthScoutMark() {
 }
 
 export function AppHeader({ sort, onSortChange }: AppHeaderProps) {
+  function handleHeaderClick(e: MouseEvent<HTMLElement>) {
+    if ((e.target as HTMLElement).closest("button")) return
+    window.location.reload()
+  }
+
   return (
-    <header className="sticky top-0 z-20 border-b border-threads-border bg-[rgba(16,16,16,0.85)] backdrop-blur-[14px]">
+    <header
+      onClick={handleHeaderClick}
+      className="sticky top-0 z-20 cursor-pointer border-b border-threads-border bg-[rgba(16,16,16,0.85)] backdrop-blur-[14px]"
+    >
       <div className="mx-auto grid h-[60px] max-w-[414px] grid-cols-[1fr_auto_1fr] items-center px-3">
         <div className="flex items-center gap-1">
           <SortIconButton

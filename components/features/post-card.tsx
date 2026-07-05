@@ -54,6 +54,7 @@ const REVEAL_ALIGN: Record<VoteType, string> = {
 }
 
 const DRAG_START_THRESHOLD = 6
+const SCROLL_UP_THRESHOLD = 8
 const PREVIEW_THRESHOLD = 18
 const COMMIT_THRESHOLD = 32
 const PARTIAL_COMMIT_THRESHOLD = 20
@@ -190,6 +191,13 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
     onVote(voteType, isFactual && witnessArmedRef.current)
   }
 
+  function abortForScrollIntent(dx: number, dy: number): boolean {
+    // Finger moving up → user is scrolling the feed down; never hijack as a vote drag.
+    if (dy <= -SCROLL_UP_THRESHOLD) return true
+    if (dy < 0 && Math.abs(dy) > Math.abs(dx)) return true
+    return false
+  }
+
   function handlePointerDown(e: ReactPointerEvent<HTMLElement>) {
     if (isVoting) return
     if (e.pointerType === "mouse" && e.button !== 0) return
@@ -214,6 +222,11 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
 
     if (!draggingRef.current) {
       if (dist < DRAG_START_THRESHOLD) return
+      if (abortForScrollIntent(dx, dy)) {
+        clearHoldTimer()
+        startRef.current = null
+        return
+      }
       draggingRef.current = true
       setIsDragging(true)
       try {
@@ -269,7 +282,7 @@ export function PostCard({ post, onVote, loadingVoteType }: PostCardProps) {
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           transition: isDragging ? "none" : "transform 0.25s ease-out",
-          touchAction: "none",
+          touchAction: isDragging ? "none" : "pan-y",
         }}
         className={cn(
           "bg-background relative z-10 grid grid-cols-[48px_minmax(0,1fr)] gap-x-3 px-3 py-3 transition-colors",

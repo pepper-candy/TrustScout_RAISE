@@ -216,7 +216,6 @@ export default function Home() {
       <ComposePostDialog
         open={isComposeOpen}
         onOpenChange={setIsComposeOpen}
-        profile={profile}
         onSubmit={handleCreatePost}
       />
     </div>

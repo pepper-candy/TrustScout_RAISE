@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
+import { calculateAgreeScore, calculateTrustScore, calculateVoteWeight, toPostWithColor } from "@/lib/trustScore";
 import type { PostRow, ProfileRow, VoteRow } from "@/types/database";
 
 /**
@@ -55,6 +55,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
+    const isFactual = post.category === "FACTUAL";
+
+    if (!isFactual) {
+      if (vote_type === "PARTIAL") {
+        return NextResponse.json(
+          { error: "Partial votes are only allowed on factual posts" },
+          { status: 400 }
+        );
+      }
+      if (is_witness) {
+        return NextResponse.json(
+          { error: "Witness votes are only allowed on factual posts" },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("accuracy_score")
@@ -66,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const weight = calculateVoteWeight(profile.accuracy_score, is_witness);
+    const weight = isFactual ? calculateVoteWeight(profile.accuracy_score, is_witness) : 1;
 
     const { error: upsertError } = await supabase.from("votes").upsert(
       {
@@ -92,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (votesError) throw votesError;
 
     const votes = allVotes ?? [];
-    const trustScore = calculateTrustScore(votes);
+    const trustScore = isFactual ? calculateTrustScore(votes) : calculateAgreeScore(votes);
 
     const { data: updatedPost, error: updateError } = await supabase
       .from("posts")

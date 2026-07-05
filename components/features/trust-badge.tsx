@@ -6,11 +6,14 @@ import { MessageCircle } from "lucide-react"
 import { ListenButton } from "@/components/features/listen-button"
 import { Progress } from "@/components/ui/progress"
 import { useAnimatedNumber } from "@/hooks/use-animated-number"
-import { TRUST_COLOR_LABEL, getTrustGradientColor } from "@/lib/trustScore"
+import {
+  TRUST_COLOR_LABEL,
+  getDisplayTrustScore,
+  getTrustGradientColor,
+} from "@/lib/trustScore"
 import { cn } from "@/lib/utils"
 import type { PostCategory, TrustColorCode } from "@/types/database"
 
-/** Non-FACTUAL posts have no trust score, so the pill just echoes the post's own category instead of a hardcoded label. */
 const NO_SCORE_CATEGORY_LABEL: Partial<Record<PostCategory, string>> = {
   OPINION: "Opinion",
   DEBATE: "Debate",
@@ -21,16 +24,22 @@ interface TrustBadgeProps {
   colorCode: TrustColorCode | null
   totalVotes: number
   compact?: boolean
-  /** Required to label the pill correctly when there's no trust score (OPINION/DEBATE) — see `NO_SCORE_CATEGORY_LABEL`. */
   category: PostCategory
-  /** When provided, renders a "🔊 Listen" button that reads the post's trust summary aloud (PROJECT_PLAN.md Section 10). */
   postId?: string
 }
 
-export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false, category, postId }: TrustBadgeProps) {
-  const percentage = Math.round(trustScore * 100)
+export function TrustBadge({
+  trustScore,
+  colorCode,
+  totalVotes,
+  compact = false,
+  category,
+  postId,
+}: TrustBadgeProps) {
+  const displayScore = getDisplayTrustScore({ category, trust_score: trustScore, total_votes: totalVotes })
+  const percentage = Math.round(displayScore * 100)
   const animatedPercentage = useAnimatedNumber(percentage)
-  const color = getTrustGradientColor(trustScore)
+  const color = getTrustGradientColor(displayScore)
   const [justUpdated, setJustUpdated] = useState(false)
   const isFirstRender = useRef(true)
 
@@ -46,9 +55,24 @@ export function TrustBadge({ trustScore, colorCode, totalVotes, compact = false,
 
   if (!colorCode) {
     return (
-      <div className="border-threads-border bg-threads-surface inline-flex w-fit items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-xs font-medium text-threads-subtle">
+      <div
+        className={cn(
+          "border-threads-border bg-threads-surface inline-flex w-fit items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-xs font-medium text-threads-subtle transition-all",
+          justUpdated && "animate-score-pop"
+        )}
+      >
         <MessageCircle className="size-3.5" />
         {NO_SCORE_CATEGORY_LABEL[category] ?? "Debate"}
+        {totalVotes > 0 && (
+          <>
+            <span className="text-threads-muted">·</span>
+            <span className="tabular-nums">{Math.round(animatedPercentage)}%</span>
+          </>
+        )}
+        <span className="text-threads-muted">·</span>
+        <span className="text-threads-muted">
+          {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
+        </span>
         {postId && <ListenButton postId={postId} className="size-5" />}
       </div>
     )

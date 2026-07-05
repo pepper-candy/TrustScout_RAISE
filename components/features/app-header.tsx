@@ -27,20 +27,7 @@ interface AppHeaderProps {
 }
 
 function TruthScoutMark() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 32 32"
-      className="size-8 text-threads-primary"
-      fill="none"
-    >
-      <circle cx="16" cy="16" r="12.5" stroke="currentColor" strokeWidth="1.75" />
-      <path
-        d="M16 8.5c-2.2 0-4 1.8-4 4 0 1.8 1.2 3.3 2.8 3.8v.2c0 .8.7 1.5 1.5 1.5h.7c.8 0 1.5-.7 1.5-1.5v-.2c1.6-.5 2.8-2 2.8-3.8 0-2.2-1.8-4-4-4Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
+  return <img src="/logo.svg" alt="" aria-hidden className="size-8" />
 }
 
 export function AppHeader({ profile, isLoading, isShuffling, onShuffle }: AppHeaderProps) {

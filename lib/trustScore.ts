@@ -46,6 +46,33 @@ export function calculateTrustScore(votes: { vote_type: VoteType; weight: number
 }
 
 /**
+ * OPINION/DEBATE: each vote counts equally (weight 1). Agree = swipe right (TRUE).
+ */
+export function calculateAgreeScore(votes: { vote_type: VoteType }[]): number {
+  if (votes.length === 0) return 0;
+  const agreeCount = votes.filter((vote) => vote.vote_type === "TRUE").length;
+  return agreeCount / votes.length;
+}
+
+/**
+ * Wilson-style confidence adjustment for FACTUAL posts (PROJECT_PLAN.md §4).
+ * `trustVotes` is derived from the raw weighted score × total vote count.
+ */
+export function calculateAdjustedTrustScore(rawTrustScore: number, totalVotes: number): number {
+  if (totalVotes <= 0) return 0;
+  const trustVotes = rawTrustScore * totalVotes;
+  return ((trustVotes + 1) / (totalVotes + 2)) * (totalVotes / (totalVotes + 10));
+}
+
+/** Score shown in the UI — adjusted for FACTUAL, raw agree % for OPINION/DEBATE. */
+export function getDisplayTrustScore(post: Pick<PostRow, "category" | "trust_score" | "total_votes">): number {
+  if (post.category === "FACTUAL") {
+    return calculateAdjustedTrustScore(post.trust_score, post.total_votes);
+  }
+  return post.trust_score;
+}
+
+/**
  * >= 0.8 dark-green, >= 0.6 light-green, >= 0.4 gray, >= 0.2 orange, else red.
  */
 export function getTrustColorCode(trustScore: number): TrustColorCode {
@@ -63,9 +90,10 @@ export function getTrustColorCode(trustScore: number): TrustColorCode {
  * trust badge flicker to "Debate" right after voting on a FACTUAL post.
  */
 export function toPostWithColor(post: PostRow, myVote: VoteType | null = null): PostWithColor {
+  const displayScore = getDisplayTrustScore(post);
   return {
     ...post,
-    color_code: post.category === "FACTUAL" ? getTrustColorCode(post.trust_score) : null,
+    color_code: post.category === "FACTUAL" ? getTrustColorCode(displayScore) : null,
     my_vote: myVote,
   };
 }
@@ -85,12 +113,15 @@ export const TRUST_COLOR_LABEL: Record<TrustColorCode, string> = {
  * summary instead.
  */
 export function buildTrustSummaryText(post: PostWithColor): string {
-  if (post.category !== "FACTUAL" || !post.color_code) {
-    return `This is a ${post.category.toLowerCase()} post, so it has no trust score. It says: ${post.content}`;
+  if (post.category !== "FACTUAL") {
+    const percentage = Math.round(post.trust_score * 100);
+    const voteWord = post.total_votes === 1 ? "vote" : "votes";
+    return `This is a ${post.category.toLowerCase()} post. ${percentage} percent agree, based on ${post.total_votes} ${voteWord}. It says: ${post.content}`;
   }
 
-  const percentage = Math.round(post.trust_score * 100);
-  const label = TRUST_COLOR_LABEL[post.color_code];
+  const displayScore = getDisplayTrustScore(post);
+  const percentage = Math.round(displayScore * 100);
+  const label = post.color_code ? TRUST_COLOR_LABEL[post.color_code] : "Uncertain";
   const voteWord = post.total_votes === 1 ? "vote" : "votes";
 
   return `Here's the post: ${post.content}. Community trust score: ${percentage} percent, rated ${label}, based on ${post.total_votes} ${voteWord}.`;

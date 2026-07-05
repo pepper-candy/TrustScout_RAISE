@@ -6,16 +6,11 @@ import { toast } from "sonner"
 import { AppHeader } from "@/components/features/app-header"
 import { BottomNav } from "@/components/features/bottom-nav"
 import { ComposePostDialog } from "@/components/features/compose-post-dialog"
+import { LandingSplash } from "@/components/features/landing-splash"
 import { PostCard } from "@/components/features/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { type CurrentUserProfile, getCurrentUserProfile, switchToRandomUser } from "@/lib/auth"
 import type { PostCategory, PostWithColor, VoteType } from "@/types/database"
-
-const VOTE_TOAST_LABEL: Record<VoteType, string> = {
-  TRUE: "True",
-  PARTIAL: "Partial",
-  FALSE: "False",
-}
 
 const CATEGORY_TOAST_LABEL: Record<PostCategory, string> = {
   FACTUAL: "Factual",
@@ -124,13 +119,6 @@ export default function Home() {
 
       const { post: updatedPost } = (await response.json()) as { post: PostWithColor }
       setPosts((prev) => prev.map((post) => (post.id === updatedPost.id ? updatedPost : post)))
-
-      toast.success(`Vote recorded: ${VOTE_TOAST_LABEL[voteType]}${isWitness ? " · Witness" : ""}`, {
-        description:
-          updatedPost.category === "FACTUAL"
-            ? `New trust score: ${Math.round(updatedPost.trust_score * 100)}%`
-            : undefined,
-      })
     } catch (err) {
       toast.error("Couldn't submit your vote", {
         description: err instanceof Error ? err.message : "Please try again.",
@@ -186,6 +174,8 @@ export default function Home() {
 
   return (
     <div className="bg-background mx-auto flex min-h-full w-full max-w-[414px] flex-col">
+      <LandingSplash isLoadingFeed={isLoadingFeed} postsCount={posts.length} />
+
       <AppHeader
         profile={profile}
         isLoading={isLoadingUser}

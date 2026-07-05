@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TruthScout",
   description: "A crowdsourced truth verification layer for social media content.",
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export const viewport: Viewport = {

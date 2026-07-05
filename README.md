@@ -1,6 +1,10 @@
 # TrustScout
 
-A crowdsourced truth verification layer for social media content, built for RAISE Hackathon 2026. Users vote **True / Partial / False** on posts; a reputation-weighted consensus algorithm produces a color-coded trust score. See [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) for the full product spec.
+A crowdsourced truth verification layer for social media content, built for RAISE Hackathon 2026.
+
+📺 **Demo Video:** [Watch on YouTube](https://youtube.com/shorts/ImXP7xGx_5w)
+
+Users vote **True / Partial / False** on posts; a reputation-weighted consensus algorithm produces a color-coded trust score. See [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) for the full product spec.
 
 ## Stack
 
@@ -17,17 +21,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). No login is required — each browser is assigned a random demo user (see `lib/auth.ts`) so weighted voting can be demonstrated across different reputations.
-
-## Environment Variables
-
-Copy `.env.local` (already provided for the hackathon) or set:
-
-| Variable | Required | Purpose |
-|:---|:---|:---|
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase project (browser client, no table grants) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase client used by all API routes |
-| `VULTR_API_KEY` / `VULTR_INFERENCE_URL` | No | Post classification + embeddings; falls back to a local heuristic if unset |
-| `GRADIUM_API_KEY` | No | Text-to-speech "Listen" button; the button is hidden if unset |
 
 ## Project Structure
 
